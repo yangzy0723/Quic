@@ -1,9 +1,7 @@
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.ChannelInputShutdownReadComplete;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
@@ -13,6 +11,7 @@ import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public final class QuicServer {
@@ -123,6 +122,6 @@ class QuicServerHandler extends ChannelInboundHandlerAdapter {
 
     private boolean validateBearerToken(String bearerToken) {
         // TODO: 实现Bearer token的验证逻辑，例如与授权服务器进行通信或验证签名
-        return false; // 假设验证始终成功
+        return Objects.equals(bearerToken, "a"); // 假设验证始终成功
     }
 }

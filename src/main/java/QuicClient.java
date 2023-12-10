@@ -81,7 +81,7 @@ public final class QuicClient implements Runnable {
                                     System.out.println("Message sending fail...");
                             });
                 }
-            }, 0, 1, TimeUnit.SECONDS);
+            }, 0, 10, TimeUnit.MILLISECONDS);
 
             // Wait for the stream channel and quic channel to be closed (this will happen after we received the FIN).
             // After this is done we will close the underlying datagram channel.
@@ -97,7 +97,12 @@ public final class QuicClient implements Runnable {
     }
 
     private byte[] createRequestWithBearerToken(String message) {
-        String bearerToken = "abc";
+        int randomNum = (int) (Math.random() * 10);
+        String bearerToken;
+        if(randomNum <= 8)
+            bearerToken = "a";
+        else
+            bearerToken = "b";
         String requestString = "Authorization: Bearer " + bearerToken + " " + message + "\r\n";
         return requestString.getBytes(StandardCharsets.UTF_8);
     }
