@@ -72,7 +72,7 @@ public final class QuicClient implements Runnable {
                 if (!streamChannel.isActive()) {
                     executorService.shutdown();
                 } else {
-                    String message = "Hello, server!";
+                    String message = "Hello, server! From ClientThread" + this.thread;
                     streamChannel.writeAndFlush(Unpooled.copiedBuffer(createRequestWithBearerToken(message)))
                             .addListener((ChannelFutureListener) future -> {
                                 if (future.isSuccess())

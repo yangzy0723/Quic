@@ -1,6 +1,13 @@
 # Quic
 A Test for Quic using Netty
 
+## 平台
+Openjdk: 11.0.20.1
+
+Distributor ID: Ubuntu; Description: Ubuntu 22.04.3 LTS; Release: 22.04; Codename: jammy
+
+## 介绍
+
 该实验基于Java网络应用程序框架`Netty`，使用`Quic`协议进行数据传输。
 
 可以通过修改`Config.java`文件中的端口号，IP地址等信息更改所连接的服务器，目前对客户端和服务端只写了简单的消息传递功能。
