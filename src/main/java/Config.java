@@ -1,7 +1,8 @@
 public class Config {
 
-    public static String IP = "localhost";
-    public static int port = 9999;
-    public static int threadNumber = 10;
-
+    public static String serverIP = "10.0.0.17";
+    public static int toPort = 9999;
+    public static int messageInterval = 20;
+    public static int listenPort = 9999;
+    public static int threadNumber = 16;
 }

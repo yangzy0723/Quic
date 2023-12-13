@@ -15,13 +15,15 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public final class QuicServer {
-
     private static final InternalLogger LOGGER = InternalLoggerFactory.getInstance(QuicServer.class);
 
     private QuicServer() {
     }
 
     public static void main(String[] args) throws Exception {
+
+        if (args.length > 0)
+            Config.listenPort = Integer.parseInt(args[0]);
 
         NioEventLoopGroup group = new NioEventLoopGroup(8);
 
@@ -82,7 +84,7 @@ public final class QuicServer {
             Channel channel = bs.group(group)
                     .channel(NioDatagramChannel.class)
                     .handler(codec)
-                    .bind(new InetSocketAddress(Config.port)).sync().channel();
+                    .bind(new InetSocketAddress(Config.listenPort)).sync().channel();
             channel.closeFuture().sync();
         } finally {
             group.shutdownGracefully();
@@ -97,14 +99,14 @@ class QuicServerHandler extends ChannelInboundHandlerAdapter {
         String bearerToken = extractBearerToken(message);
         if (validateBearerToken(bearerToken)) {
             ByteBuf buffer = ctx.alloc().directBuffer();
-            buffer.writeCharSequence("Message From Server: Hello, the Client! Successfully receive the message!", CharsetUtil.US_ASCII);
+            buffer.writeCharSequence("Successfully receive the message!", CharsetUtil.US_ASCII);
             ctx.writeAndFlush(buffer);
 
-            System.out.println("Accept message from client! The message is:\"" + message.substring(22 + bearerToken.length() + 1) + "\"");
+            System.out.println("[Accept message from client.] The message is:\"" + message.substring(22 + bearerToken.length() + 1) + "\"");
         }
         else {
             ByteBuf buffer = ctx.alloc().directBuffer();
-            buffer.writeCharSequence("Message From Server: BearerToken check failed!", CharsetUtil.US_ASCII);
+            buffer.writeCharSequence("BearerToken check failed!", CharsetUtil.US_ASCII);
             ctx.writeAndFlush(buffer);
 
             ctx.close();
@@ -122,6 +124,6 @@ class QuicServerHandler extends ChannelInboundHandlerAdapter {
 
     private boolean validateBearerToken(String bearerToken) {
         // TODO: 实现Bearer token的验证逻辑，例如与授权服务器进行通信或验证签名
-        return Objects.equals(bearerToken, "a"); // 假设验证始终成功
+        return Objects.equals(bearerToken, "a"); // 95%的信息能通过验证
     }
 }
