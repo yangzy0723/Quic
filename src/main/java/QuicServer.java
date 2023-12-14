@@ -12,11 +12,13 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public final class QuicServer {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getInstance(QuicServer.class);
-
+    private static ExecutorService executorService;
     private QuicServer() {
     }
 
@@ -24,8 +26,8 @@ public final class QuicServer {
 
         if (args.length > 0)
             Config.listenPort = Integer.parseInt(args[0]);
-
-        NioEventLoopGroup group = new NioEventLoopGroup(8);
+        NioEventLoopGroup group = new NioEventLoopGroup();
+        executorService = Executors.newFixedThreadPool(32);
 
         SelfSignedCertificate selfSignedCertificate = new SelfSignedCertificate();
         QuicSslContext context = QuicSslContextBuilder.forServer(
@@ -33,7 +35,7 @@ public final class QuicServer {
                 .applicationProtocols("http/0.9").build();
 
         ChannelHandler codec = new QuicServerCodecBuilder().sslContext(context)
-                .maxIdleTimeout(5000, TimeUnit.MILLISECONDS)
+                .maxIdleTimeout(50000, TimeUnit.MILLISECONDS)
                 // Configure some limits for the maximal number of streams (and the data) that
                 // we want to handle.
                 .initialMaxData(10000000)
@@ -86,44 +88,49 @@ public final class QuicServer {
                     .handler(codec)
                     .bind(new InetSocketAddress(Config.listenPort)).sync().channel();
             channel.closeFuture().sync();
+            System.out.println();
         } finally {
             group.shutdownGracefully();
         }
     }
-}
 
-class QuicServerHandler extends ChannelInboundHandlerAdapter {
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        String message = ((ByteBuf) msg).toString(CharsetUtil.US_ASCII);
-        String bearerToken = extractBearerToken(message);
-        if (validateBearerToken(bearerToken)) {
-            ByteBuf buffer = ctx.alloc().directBuffer();
-            buffer.writeCharSequence("Successfully receive the message!", CharsetUtil.US_ASCII);
-            ctx.writeAndFlush(buffer);
+    static class QuicServerHandler extends ChannelInboundHandlerAdapter {
+        @Override
+        public void channelRead(ChannelHandlerContext ctx, Object msg) {
+            executorService.execute(new Runnable() {
+                @Override
+                public void run() {
+                    String message = ((ByteBuf) msg).toString(CharsetUtil.US_ASCII);
+                    String bearerToken = extractBearerToken(message);
+                    ByteBuf buffer = ctx.alloc().directBuffer();
+                    if (validateBearerToken(bearerToken)) {
+                        buffer.writeCharSequence("Successfully receive the message!", CharsetUtil.US_ASCII);
+                        ctx.writeAndFlush(buffer);
 
-            System.out.println("[Accept message from client.] The message is:\"" + message.substring(22 + bearerToken.length() + 1) + "\"");
+                        System.out.println("[Accept message from client.] The message is:\"" + message.substring(22 + bearerToken.length() + 1) + "\"");
+                    }
+                    else {
+                        buffer.writeCharSequence("BearerToken check failed!", CharsetUtil.US_ASCII);
+                        ctx.writeAndFlush(buffer);
+
+                        ctx.close();
+                    }
+                }
+            });
         }
-        else {
-            ByteBuf buffer = ctx.alloc().directBuffer();
-            buffer.writeCharSequence("BearerToken check failed!", CharsetUtil.US_ASCII);
-            ctx.writeAndFlush(buffer);
 
-            ctx.close();
+        private String extractBearerToken(String message) {
+            String bearerToken = message.substring(22);
+            int i;
+            for (i = 0; i < bearerToken.length(); i++)
+                if (bearerToken.charAt(i) == ' ')
+                    break;
+            return bearerToken.substring(0, i);
         }
-    }
 
-    private String extractBearerToken(String message) {
-        String bearerToken = message.substring(22);
-        int i;
-        for (i = 0; i < bearerToken.length(); i++)
-            if (bearerToken.charAt(i) == ' ')
-                break;
-        return bearerToken.substring(0, i);
-    }
-
-    private boolean validateBearerToken(String bearerToken) {
-        // TODO: 实现Bearer token的验证逻辑，例如与授权服务器进行通信或验证签名
-        return Objects.equals(bearerToken, "a"); // 95%的信息能通过验证
+        private boolean validateBearerToken(String bearerToken) {
+            // TODO: 实现Bearer token的验证逻辑，例如与授权服务器进行通信或验证签名
+            return Objects.equals(bearerToken, "a"); // 80%的信息能通过验证
+        }
     }
 }

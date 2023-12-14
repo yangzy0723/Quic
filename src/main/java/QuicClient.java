@@ -25,18 +25,19 @@ public final class QuicClient implements Runnable {
     long startTime;
     long endTime;
     ArrayList<Long> respondTime;
+    boolean firstSendMessage;
 
     QuicClient(int thread) {
         this.thread = thread;
         this.startTime = 0;
         this.endTime = 0;
         this.respondTime = new ArrayList<>();
+        this.firstSendMessage = true;
     }
 
     @Override
     public void run() {
-
-        NioEventLoopGroup group = new NioEventLoopGroup(1);
+        NioEventLoopGroup group = new NioEventLoopGroup();
 
         QuicSslContext context = QuicSslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)
                 .applicationProtocols("http/0.9").build();
@@ -44,12 +45,11 @@ public final class QuicClient implements Runnable {
         try {
             ChannelHandler codec = new QuicClientCodecBuilder()
                     .sslContext(context)
-                    .maxIdleTimeout(5000, TimeUnit.MILLISECONDS)
+                    .maxIdleTimeout(50000, TimeUnit.MILLISECONDS)
                     .initialMaxData(10000000)
                     // As we don't want to support remote initiated streams just set up the limit for local initiated streams in this example.
                     .initialMaxStreamDataBidirectionalLocal(1000000)
                     .build();
-
             Bootstrap bs = new Bootstrap();
             Channel channel = null;
             channel = bs.group(group)
@@ -118,12 +118,18 @@ public final class QuicClient implements Runnable {
     }
 
     private byte[] createRequestWithBearerToken(String message) {
-        int randomNum = (int) (Math.random() * 200);
         String bearerToken;
-        if(randomNum <= 198)
+        if(!firstSendMessage) {
+            int randomNum = (int) (Math.random() * 10);
+            if (randomNum <= 8)
+                bearerToken = "a";
+            else
+                bearerToken = "b";
+        }
+        else {
             bearerToken = "a";
-        else
-            bearerToken = "b";
+            firstSendMessage = false;
+        }
         String requestString = "Authorization: Bearer " + bearerToken + " " + message + "\r\n";
         return requestString.getBytes(StandardCharsets.UTF_8);
     }
